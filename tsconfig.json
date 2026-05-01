@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
+    "strictPropertyInitialization": true,
+    "alwaysStrict": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      "@shared/*": ["./src/shared-kernel/*"],
+      "@iam/*": ["./src/modules/iam/*"],
+      "@properties/*": ["./src/modules/properties/*"],
+      "@offers/*": ["./src/modules/offers/*"],
+      "@contacts/*": ["./src/modules/contacts/*"],
+      "@publications/*": ["./src/modules/publications/*"],
+      "@notifications/*": ["./src/modules/notifications/*"],
+      "@audit/*": ["./src/modules/audit/*"],
+      "@configuration/*": ["./src/modules/configuration/*"]
+    }
+  }
+}

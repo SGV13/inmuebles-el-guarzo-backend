@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Prisma.prisma",
+    "EditorConfig.EditorConfig",
+    "eamodio.gitlens",
+    "vivaxy.vscode-conventional-commits",
+    "GitHub.vscode-pull-request-github",
+    "ms-azuretools.vscode-docker",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-spanish",
+    "humao.rest-client",
+    "usernamehw.errorlens",
+    "SonarSource.sonarlint-vscode",
+    "yoavbls.pretty-ts-errors"
+  ]
+}

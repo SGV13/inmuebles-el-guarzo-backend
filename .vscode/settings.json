@@ -1,0 +1,47 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "eslint.validate": ["javascript", "typescript"],
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  },
+  "cSpell.language": "en,es",
+  "cSpell.words": [
+    "Guarzo",
+    "inmuebles",
+    "asesor",
+    "asesores",
+    "propietario",
+    "captacion",
+    "publications",
+    "iam",
+    "nestjs",
+    "supabase",
+    "neon",
+    "doppler",
+    "kong",
+    "upstash",
+    "resend",
+    "uuid",
+    "uuids",
+    "pnpm",
+    "swc",
+    "Giraldo"
+  ]
+}
