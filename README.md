@@ -3,6 +3,7 @@
 Backend de la plataforma inmobiliaria Inmuebles El Guarzo, segunda versión.
 
 ## Stack
+
 - NestJS 10 + TypeScript 5 (strict mode)
 - PostgreSQL 16 (Neon) + Prisma 5
 - Supabase Auth como Identity Provider
@@ -11,6 +12,7 @@ Backend de la plataforma inmobiliaria Inmuebles El Guarzo, segunda versión.
 - Doppler (secrets) + GitHub Actions (CI/CD) + SonarCloud
 
 ## Arquitectura
+
 Monolito modular con Clean Architecture (Uncle Bob) por bounded context.
 Bounded contexts: `iam`, `properties`, `offers`, `contacts`, `publications`,
 `notifications`, `audit`, `configuration`.
@@ -18,6 +20,7 @@ Bounded contexts: `iam`, `properties`, `offers`, `contacts`, `publications`,
 Decisiones documentadas en `docs/adr/`.
 
 ## Requisitos previos
+
 - Node 20.18.0 LTS (vía nvm-windows)
 - pnpm 9+
 - Docker Desktop
@@ -36,7 +39,9 @@ pnpm start:dev
 ```
 
 ## Estrategia de ramificación
+
 GitHub Flow con dos ambientes:
+
 - `main` → producción (deploy automático tras merge)
 - `develop` → staging (deploy automático tras merge)
 - `feature/*`, `fix/*`, `chore/*`, `docs/*`, `refactor/*`, `test/*` → ramas cortas
@@ -44,6 +49,7 @@ GitHub Flow con dos ambientes:
 Toda PR requiere aprobación de un compañero del equipo y checks de CI verdes.
 
 ## Convenciones
+
 - Conventional Commits para mensajes de commit (`feat:`, `fix:`, `chore:`...)
 - Funciones máximo 50 líneas, archivos máximo 300 líneas
 - Tipado estricto, sin `any`
@@ -52,5 +58,6 @@ Toda PR requiere aprobación de un compañero del equipo y checks de CI verdes.
 - Cobertura mínima 70% global, 90% en capa de dominio
 
 ## Equipo
+
 - Samuel Giraldo Villada
 - Juan Camilo Urrea Garcia
