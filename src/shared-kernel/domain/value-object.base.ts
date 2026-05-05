@@ -15,6 +15,8 @@
  * → CAPA: Entities (Uncle Bob)
  */
 
+import { isDeepStrictEqual } from 'node:util';
+
 export abstract class ValueObject<T extends Record<string, unknown>> {
   protected readonly props: T;
 
@@ -26,9 +28,9 @@ export abstract class ValueObject<T extends Record<string, unknown>> {
     if (other === undefined || other === null) {
       return false;
     }
-    if (other.props === undefined) {
-      return false;
+    if (this === other) {
+      return true;
     }
-    return JSON.stringify(this.props) === JSON.stringify(other.props);
+    return isDeepStrictEqual(this.props, other.props);
   }
 }

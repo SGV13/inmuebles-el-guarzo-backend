@@ -12,7 +12,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { DomainException } from './exceptions/domain.exception';
+import { DomainErrorType, DomainException } from './exceptions/domain.exception';
 
 export class UniqueId {
   private readonly _value: string;
@@ -21,20 +21,10 @@ export class UniqueId {
     this._value = value;
   }
 
-  /**
-   * Genera un nuevo UniqueId con un UUID v4 aleatorio.
-   * Usar este método al crear una entidad nueva.
-   */
   public static generate(): UniqueId {
     return new UniqueId(randomUUID());
   }
 
-  /**
-   * Reconstruye un UniqueId a partir de un valor existente (ejemplo: leído de la BD).
-   * Valida que el valor sea un UUID v4 válido.
-   *
-   * @throws InvalidUniqueIdException si el valor no es un UUID válido.
-   */
   public static fromString(value: string): UniqueId {
     if (!UniqueId.isValidUuid(value)) {
       throw new InvalidUniqueIdException(value);
@@ -51,12 +41,16 @@ export class UniqueId {
   }
 
   private static isValidUuid(value: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    // Acepta UUID v1 a v8 conforme a RFC 4122 + drafts modernos.
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(value);
   }
 }
 
 export class InvalidUniqueIdException extends DomainException {
+  public readonly type = DomainErrorType.VALIDATION;
+  public readonly code = 'SHARED.INVALID_UUID';
+
   constructor(value: string) {
     super(`The value "${value}" is not a valid UUID.`);
   }

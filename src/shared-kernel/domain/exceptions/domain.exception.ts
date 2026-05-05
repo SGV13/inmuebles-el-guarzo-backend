@@ -1,18 +1,26 @@
 /**
- * DomainException — Excepción base para todos los errores del dominio.
- *
- * Cualquier error que represente una violación de las reglas del negocio
- * (ejemplo: "no se puede activar una oferta sin precio", "este email ya está
- * registrado") debe extender de esta clase.
- *
- * Las excepciones de dominio NO deben mezclarse con excepciones de
- * infraestructura (errores de base de datos, errores HTTP). El filtro
- * de excepciones en presentation/ las captura y traduce a respuestas HTTP.
- *
- * → CAPA: Entities (Uncle Bob)
+ * Categorías de errores de dominio.
+ * El filtro HTTP las traduce a status codes:
+ *   VALIDATION    -> 400
+ *   UNAUTHORIZED  -> 401
+ *   FORBIDDEN     -> 403
+ *   NOT_FOUND     -> 404
+ *   CONFLICT      -> 409
+ *   BUSINESS_RULE -> 422
  */
+export enum DomainErrorType {
+  VALIDATION = 'VALIDATION',
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  FORBIDDEN = 'FORBIDDEN',
+  NOT_FOUND = 'NOT_FOUND',
+  CONFLICT = 'CONFLICT',
+  BUSINESS_RULE = 'BUSINESS_RULE',
+}
 
 export abstract class DomainException extends Error {
+  public abstract readonly type: DomainErrorType;
+  public abstract readonly code: string;
+
   protected constructor(message: string) {
     super(message);
     this.name = this.constructor.name;
