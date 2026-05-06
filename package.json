@@ -71,6 +71,17 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "^@shared/(.*)$": "<rootDir>/shared-kernel/$1",
+      "^@iam/(.*)$": "<rootDir>/modules/iam/$1",
+      "^@properties/(.*)$": "<rootDir>/modules/properties/$1",
+      "^@offers/(.*)$": "<rootDir>/modules/offers/$1",
+      "^@contacts/(.*)$": "<rootDir>/modules/contacts/$1",
+      "^@publications/(.*)$": "<rootDir>/modules/publications/$1",
+      "^@notifications/(.*)$": "<rootDir>/modules/notifications/$1",
+      "^@audit/(.*)$": "<rootDir>/modules/audit/$1",
+      "^@configuration/(.*)$": "<rootDir>/modules/configuration/$1"
+    },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
