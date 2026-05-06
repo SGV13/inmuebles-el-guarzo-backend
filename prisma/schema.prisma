@@ -55,8 +55,13 @@ model UserProfile {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  propertyAssignments   PropertyAdvisorAssignment[]
-  offerStateTransitions OfferStateTransition[]
+  propertyAssignments          PropertyAdvisorAssignment[]
+  offerStateTransitions        OfferStateTransition[]
+  assignedContactMessages      ContactMessage[]
+  contactMessageNotes          ContactMessageNote[]
+  publicationRequestsAsAdvisor PublicationRequest[]        @relation("PublicationRequestAdvisor")
+  publicationRequestsAsAdmin   PublicationRequest[]        @relation("PublicationRequestAdmin")
+  auditLogs                    AuditLog[]
 
   @@index([role, isActive])
   @@map("user_profiles")
@@ -82,8 +87,9 @@ model PropertyType {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  subtypes   PropertySubtype[]
-  properties Property[]
+  subtypes            PropertySubtype[]
+  properties          Property[]
+  publicationRequests PublicationRequest[]
 
   @@index([isActive])
   @@map("property_types")
@@ -262,12 +268,13 @@ model Property {
   propertyCondition PropertyCondition @relation(fields: [propertyConditionId], references: [id], onDelete: Restrict)
   owner             PropertyOwner     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
 
-  images      PropertyImage[]
-  features    PropertyFeature[]
-  amenities   PropertyAmenity[]
-  valuations  PropertyValuation[]
-  assignments PropertyAdvisorAssignment[]
-  offers      PropertyOffer[]
+  images          PropertyImage[]
+  features        PropertyFeature[]
+  amenities       PropertyAmenity[]
+  valuations      PropertyValuation[]
+  assignments     PropertyAdvisorAssignment[]
+  offers          PropertyOffer[]
+  contactMessages ContactMessage[]
 
   @@index([city, isActive])
   @@index([propertyTypeId, isActive])
@@ -484,4 +491,351 @@ model OfferStateTransition {
   @@index([offerId, createdAt])
   @@index([performedBy])
   @@map("offer_state_transitions")
+}
+
+// =============================================================================
+// CONTACTS — Mensajes de contacto del catálogo público y notas internas
+// =============================================================================
+//
+// Mensajes que llegan desde el formulario público del catálogo. La gestión
+// interna se hace asignando a un asesor y agregando notas. Las notas son
+// inmutables (RF-51): triggers SQL en la migración rechazan UPDATE/DELETE.
+
+enum ContactMessageStatus {
+  RECEIVED
+  ASSIGNED
+  ATTENDED
+  DISCARDED
+}
+
+enum ContactReceivedChannel {
+  CATALOG_PUBLIC
+  WHATSAPP_INTAKE
+  PHONE_INTAKE
+}
+
+model ContactMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Datos del remitente
+  name  String @db.VarChar(150)
+  email String @db.VarChar(180)
+  phone String @db.VarChar(50)
+
+  // Contenido
+  message String @db.VarChar(2000)
+
+  // Referencia opcional a una propiedad
+  propertyId String? @map("property_id") @db.Uuid
+
+  // Estado y asignación
+  status            ContactMessageStatus   @default(RECEIVED)
+  receivedChannel   ContactReceivedChannel @default(CATALOG_PUBLIC) @map("received_channel")
+  assignedAdvisorId String?                @map("assigned_advisor_id") @db.Uuid
+  attendedAt        DateTime?              @map("attended_at") @db.Timestamptz(6)
+
+  // Deduplicación
+  dedupHash String @unique @map("dedup_hash") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  property        Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  assignedAdvisor UserProfile?         @relation(fields: [assignedAdvisorId], references: [id], onDelete: SetNull)
+  notes           ContactMessageNote[]
+
+  @@index([status, createdAt])
+  @@index([assignedAdvisorId, status])
+  @@index([propertyId])
+  @@map("contact_messages")
+}
+
+model ContactMessageNote {
+  id        String @id @default(uuid()) @db.Uuid
+  messageId String @map("message_id") @db.Uuid
+  authorId  String @map("author_id") @db.Uuid
+  content   String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  message ContactMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  author  UserProfile    @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([messageId, createdAt])
+  @@index([authorId])
+  @@map("contact_message_notes")
+}
+
+// =============================================================================
+// PUBLICATIONS — Solicitudes de captación + autorizaciones de datos personales
+// =============================================================================
+//
+// Solicitudes que llegan desde el formulario público de captación de
+// propietarios (HU-22). El admin las revisa, asigna asesor opcionalmente,
+// aprueba o rechaza. Si aprueba, se crea property_owner y property.
+//
+// Las autorizaciones de datos personales (Ley 1581) viven en una tabla
+// genérica que apunta polimorficamente al sujeto de los datos (request,
+// owner, etc.). Es append-only: revocaciones se registran como filas
+// nuevas, no como UPDATE.
+
+enum PublicationRequestStatus {
+  PENDING_REVIEW
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PublicationRequestOfferType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum PersonalDataSubjectType {
+  PUBLICATION_REQUEST
+  PROPERTY_OWNER
+}
+
+model PublicationRequest {
+  id              String @id @default(uuid()) @db.Uuid
+  referenceNumber String @unique @map("reference_number") @db.VarChar(20)
+
+  // Datos del propietario solicitante
+  ownerFullName       String  @map("owner_full_name") @db.VarChar(200)
+  ownerEmail          String  @map("owner_email") @db.VarChar(180)
+  ownerPhonePrimary   String  @map("owner_phone_primary") @db.VarChar(50)
+  ownerPhoneSecondary String? @map("owner_phone_secondary") @db.VarChar(50)
+  ownerDocumentType   String? @map("owner_document_type") @db.VarChar(20)
+  ownerDocumentNumber String? @map("owner_document_number") @db.VarChar(40)
+
+  // Datos propuestos del inmueble (sin validar)
+  proposedPropertyTypeId String?                     @map("proposed_property_type_id") @db.Uuid
+  proposedOfferType      PublicationRequestOfferType @map("proposed_offer_type")
+  proposedLocation       String                      @map("proposed_location") @db.VarChar(300)
+  proposedAreaM2         Decimal?                    @map("proposed_area_m2") @db.Decimal(10, 2)
+  proposedDescription    String                      @map("proposed_description")
+  proposedExpectedPrice  Decimal?                    @map("proposed_expected_price") @db.Decimal(15, 2)
+
+  // Estado y workflow
+  status            PublicationRequestStatus @default(PENDING_REVIEW)
+  assignedAdvisorId String?                  @map("assigned_advisor_id") @db.Uuid
+
+  // Datos de la decisión (NULL hasta que se decida)
+  decisionAt        DateTime? @map("decision_at") @db.Timestamptz(6)
+  decisionByAdminId String?   @map("decision_by_admin_id") @db.Uuid
+  decisionMotive    String?   @map("decision_motive")
+
+  // Trazabilidad de seguridad
+  captchaToken           String  @map("captcha_token") @db.VarChar(2048)
+  submittedFromIp        String? @map("submitted_from_ip") @db.VarChar(45)
+  submittedFromUserAgent String? @map("submitted_from_user_agent") @db.VarChar(500)
+
+  // Deduplicación
+  dedupHash String @unique @map("dedup_hash") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  proposedPropertyType PropertyType? @relation(fields: [proposedPropertyTypeId], references: [id], onDelete: Restrict)
+  assignedAdvisor      UserProfile?  @relation("PublicationRequestAdvisor", fields: [assignedAdvisorId], references: [id], onDelete: SetNull)
+  decisionByAdmin      UserProfile?  @relation("PublicationRequestAdmin", fields: [decisionByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([assignedAdvisorId, status])
+  @@index([ownerEmail])
+  @@map("publication_requests")
+}
+
+model PersonalDataAuthorization {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Referencia polimórfica al sujeto de los datos
+  subjectType PersonalDataSubjectType @map("subject_type")
+  subjectId   String                  @map("subject_id") @db.Uuid
+
+  // Identificación del titular en el momento de la autorización
+  titularFullName       String @map("titular_full_name") @db.VarChar(200)
+  titularDocumentType   String @map("titular_document_type") @db.VarChar(20)
+  titularDocumentNumber String @map("titular_document_number") @db.VarChar(40)
+
+  // Tratamientos autorizados (texto libre estructurado por el frontend)
+  authorizedPurposes String @map("authorized_purposes")
+
+  // Versión del aviso de privacidad mostrado
+  privacyNoticeVersion String @map("privacy_notice_version") @db.VarChar(20)
+
+  // Evidencia técnica del consentimiento
+  consentIp        String?  @map("consent_ip") @db.VarChar(45)
+  consentUserAgent String?  @map("consent_user_agent") @db.VarChar(500)
+  consentedAt      DateTime @default(now()) @map("consented_at") @db.Timestamptz(6)
+
+  // Revocación (NULL si está vigente)
+  isRevoked        Boolean   @default(false) @map("is_revoked")
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revocationReason String?   @map("revocation_reason")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([subjectType, subjectId])
+  @@index([titularDocumentType, titularDocumentNumber])
+  @@map("personal_data_authorizations")
+}
+
+// =============================================================================
+// NOTIFICATIONS — Outbox (entrega confiable) + Log (histórico de envíos)
+// =============================================================================
+//
+// Las acciones de negocio insertan filas en notification_outbox dentro de
+// la misma transacción que la acción. Un job programado las procesa
+// despues, las despacha via Resend/Novu, y registra el resultado en
+// notification_log.
+//
+// Esto garantiza entrega confiable sin bloquear las transacciones en
+// llamadas HTTP externas.
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NotificationOutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model NotificationOutbox {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Identificación de la notificación a enviar
+  templateCode String              @map("template_code") @db.VarChar(80)
+  channel      NotificationChannel
+  recipient    String              @db.VarChar(300)
+
+  // Payload con las variables a inyectar en la plantilla (Novu)
+  payload Json
+
+  // Procesamiento
+  status           NotificationOutboxStatus @default(PENDING)
+  attemptCount     Int                      @default(0) @map("attempt_count")
+  lastAttemptAt    DateTime?                @map("last_attempt_at") @db.Timestamptz(6)
+  lastErrorMessage String?                  @map("last_error_message")
+
+  // Cuando se procesa, se vincula al log resultante
+  notificationLogId String? @unique @map("notification_log_id") @db.Uuid
+
+  // Programación opcional (para enviar en futuro)
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  notificationLog NotificationLog? @relation(fields: [notificationLogId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledFor])
+  @@index([status, createdAt])
+  @@map("notification_outbox")
+}
+
+model NotificationLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Identificación
+  templateCode String              @map("template_code") @db.VarChar(80)
+  channel      NotificationChannel
+  recipient    String              @db.VarChar(300)
+
+  // Resultado del envío
+  status            NotificationStatus
+  providerMessageId String?            @map("provider_message_id") @db.VarChar(200)
+  errorMessage      String?            @map("error_message")
+  metadata          Json?
+
+  // Timestamps de ciclo de vida
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz(6)
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  outbox NotificationOutbox?
+
+  @@index([status, createdAt])
+  @@index([recipient, createdAt])
+  @@index([templateCode, createdAt])
+  @@map("notification_log")
+}
+
+// =============================================================================
+// AUDIT — Registro append-only de eventos auditables del sistema
+// =============================================================================
+//
+// Cada accion relevante del sistema (creacion, aprobacion, rechazo, cambio
+// de estado, etc.) inserta una fila aqui. La tabla es append-only via
+// trigger SQL: cualquier UPDATE o DELETE es rechazado por Postgres.
+//
+// La referencia al sujeto es polimorfica (subject_type + subject_id) sin
+// FK fisica, igual que personal_data_authorizations. La integridad la
+// garantiza el codigo que solo escribe filas en transacciones donde el
+// sujeto existe.
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  ANONYMOUS
+}
+
+enum AuditSubjectType {
+  PUBLICATION_REQUEST
+  PROPERTY
+  PROPERTY_OFFER
+  PROPERTY_OWNER
+  USER_PROFILE
+  CONTACT_MESSAGE
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Sujeto auditado (referencia polimorfica)
+  subjectType AuditSubjectType @map("subject_type")
+  subjectId   String           @map("subject_id") @db.Uuid
+
+  // Accion realizada (formato BC.ACTION_NAME, ej: OFFER.STATE_CHANGED)
+  action String @db.VarChar(80)
+
+  // Actor (quien realizo la accion)
+  actorType AuditActorType @map("actor_type")
+  actorId   String?        @map("actor_id") @db.Uuid
+
+  // Contexto de la accion
+  description String?
+  metadata    Json?
+
+  // Trazabilidad de la peticion HTTP que originó la acción
+  requestIp        String? @map("request_ip") @db.VarChar(45)
+  requestUserAgent String? @map("request_user_agent") @db.VarChar(500)
+  correlationId    String? @map("correlation_id") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor UserProfile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_log")
 }
