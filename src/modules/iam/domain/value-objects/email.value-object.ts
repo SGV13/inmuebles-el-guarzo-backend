@@ -4,7 +4,7 @@
  *
  * Reglas de validacion:
  *   - Formato HTML5 spec (estandar de facto en aplicaciones web).
- *   - Longitud maxima 254 caracteres (RFC 5321).
+ *   - Longitud maxima 180 caracteres (alineado con schema.prisma)
  *   - Normalizado a minusculas (los emails son case-insensitive en la
  *     practica de todos los proveedores principales).
  *   - Trim de espacios al inicio y fin.
@@ -27,7 +27,7 @@ export class Email {
   private static readonly EMAIL_REGEX =
     /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-  private static readonly MAX_LENGTH = 254;
+  private static readonly MAX_LENGTH = 180;
 
   private readonly _value: string;
 
@@ -53,7 +53,7 @@ export class Email {
   }
 
   public equals(other?: Email): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {
