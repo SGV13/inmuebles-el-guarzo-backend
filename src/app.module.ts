@@ -1,19 +1,28 @@
 /**
- * AppModule — Módulo raíz de la aplicación.
+ * AppModule — Modulo raiz de la aplicacion.
  *
- * Compone los módulos del sistema: el SharedKernelModule (global) y, más
- * adelante, los 8 módulos de bounded context. Por ahora solo el shared-kernel.
+ * Compone los modulos del sistema. ConfigModule va PRIMERO porque
+ * valida las variables de entorno al bootstrap; si falla, la app
+ * no arranca y los modulos siguientes ni siquiera se inicializan.
  *
- * No define controllers ni providers propios: los controllers viven en
- * los módulos de bounded context, los providers compartidos en el
- * SharedKernelModule.
+ * Marcado como isGlobal=true para que cualquier modulo pueda
+ * inyectar ConfigService sin tener que importar ConfigModule.
  */
 
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
+import { validateEnv } from './shared-kernel/infrastructure/config/env.validator';
 import { SharedKernelModule } from './shared-kernel/shared-kernel.module';
 
 @Module({
-  imports: [SharedKernelModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnv,
+    }),
+    SharedKernelModule,
+  ],
 })
 export class AppModule {}

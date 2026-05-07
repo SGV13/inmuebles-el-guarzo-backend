@@ -36,7 +36,13 @@ export class UniqueId {
     return this._value;
   }
 
-  public equals(other: UniqueId): boolean {
+  public equals(other?: UniqueId): boolean {
+    if (other === undefined || other === null) {
+      return false;
+    }
+    if (this === other) {
+      return true;
+    }
     return this._value === other._value;
   }
 
