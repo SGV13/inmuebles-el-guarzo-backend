@@ -57,8 +57,6 @@ Toda PR requiere aprobación de un compañero del equipo y checks de CI verdes.
 - Comentarios de lógica de negocio en español
 - Cobertura mínima 70% global, 90% en capa de dominio
 
-Cambio trivial de prueba pruebosa hdshsadhsadhadshhdashads
-
 ## Equipo
 
 - Samuel Giraldo Villada
