@@ -70,6 +70,8 @@ export class DomainExceptionFilter implements ExceptionFilter<DomainException> {
         return HttpStatus.CONFLICT;
       case DomainErrorType.BUSINESS_RULE:
         return HttpStatus.UNPROCESSABLE_ENTITY;
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
   }
 }

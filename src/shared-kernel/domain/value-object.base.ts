@@ -25,7 +25,7 @@ export abstract class ValueObject<T extends Record<string, unknown>> {
   }
 
   public equals(other?: ValueObject<T>): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {

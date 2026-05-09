@@ -37,7 +37,7 @@ export class UniqueId {
   }
 
   public equals(other?: UniqueId): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {

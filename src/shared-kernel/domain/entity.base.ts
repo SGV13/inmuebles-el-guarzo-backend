@@ -24,7 +24,7 @@ export abstract class Entity<TId extends UniqueId = UniqueId> {
   }
 
   public equals(other?: Entity<TId>): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {

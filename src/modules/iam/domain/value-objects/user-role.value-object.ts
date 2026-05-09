@@ -56,7 +56,7 @@ export class UserRole {
   }
 
   public equals(other?: UserRole): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {
