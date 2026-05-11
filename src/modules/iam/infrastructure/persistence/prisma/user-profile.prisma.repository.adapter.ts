@@ -1,3 +1,18 @@
+/**
+ * UserProfilePrismaRepositoryAdapter — Implementacion de UserProfileRepositoryPort
+ * usando Prisma como ORM contra Postgres (Neon).
+ *
+ * Responsabilidad unica: traducir entre el modelo Prisma (UserProfilePrismaModel)
+ * y el aggregate de dominio (UserProfile) usando UserProfileMapper.
+ * La logica de negocio no vive aqui.
+ *
+ * El parametro opcional `tx` permite que el mismo metodo opere dentro de
+ * una $transaction de Prisma (para atomicidad con publicacion de eventos)
+ * o directamente sobre el pool (para lecturas standalone).
+ *
+ * → CAPA: Frameworks & Drivers (Uncle Bob)
+ */
+
 import { Injectable } from '@nestjs/common';
 
 import { Maybe } from '../../../../../shared-kernel/domain/maybe';

@@ -1,3 +1,15 @@
+/**
+ * UserProfileMapper — Traduce entre el modelo Prisma y el aggregate UserProfile.
+ *
+ * toDomain:       UserProfilePrismaModel → UserProfile (para lecturas del repo)
+ * toPersistence:  UserProfile → Prisma.UserProfileUncheckedCreateInput (para writes)
+ *
+ * Convierte entre las tres representaciones de opcionalidad del proyecto:
+ *   T | null  (Prisma)  ↔  Maybe<T>  (dominio)  vía fromNullable / toNullable
+ *
+ * → CAPA: Interface Adapters (Uncle Bob)
+ */
+
 import type { Prisma, UserProfile as UserProfilePrismaModel } from '@prisma/client';
 
 import { Maybe } from '../../../../../../shared-kernel/domain/maybe';

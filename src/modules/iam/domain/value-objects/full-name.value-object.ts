@@ -103,7 +103,7 @@ export class FullName {
   }
 
   public equals(other?: FullName): boolean {
-    if (other === undefined || other === null) {
+    if (other === undefined) {
       return false;
     }
     if (this === other) {

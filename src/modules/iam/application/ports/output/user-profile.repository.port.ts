@@ -47,7 +47,7 @@ export interface UserProfileRepositoryPort {
    * Tipicamente se llama dentro de una $transaction junto con la
    * publicacion de eventos del aggregate (eventBus.publish), para
    * garantizar que la persistencia y los efectos de los eventos sean
-   * atomicos: si un handler falla, todo se revierte.
+   * atomicos: si un handler falla, to do se revierte.
    */
   save(userProfile: UserProfile, tx?: TransactionContext): Promise<void>;
 }

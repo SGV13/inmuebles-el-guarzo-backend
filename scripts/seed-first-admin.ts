@@ -134,6 +134,9 @@ function printPasswordSummary(password: string | null): void {
     console.log('Save this NOW in your password manager.');
     console.log('Use it for first login. Then change it via Supabase auth flow.');
   }
+  console.log();
+  console.log('REMINDER: Remove SEED_ADMIN_EMAIL, SEED_ADMIN_FULL_NAME and');
+  console.log('SEED_ADMIN_PHONE from your .env file now that the seed is done.');
 }
 
 function logValidatedData(
