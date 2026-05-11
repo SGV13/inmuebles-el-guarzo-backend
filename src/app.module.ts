@@ -9,6 +9,10 @@
  * inyectar ConfigService sin tener que importar ConfigModule.
  */
 
+import { APP_GUARD } from '@nestjs/core';
+import { IamModule } from './modules/iam/iam.module';
+import { JwtAuthGuard } from './modules/iam/presentation/http/guards/jwt-auth.guard';
+
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
@@ -23,6 +27,14 @@ import { SharedKernelModule } from './shared-kernel/shared-kernel.module';
       validate: validateEnv,
     }),
     SharedKernelModule,
+    IamModule,
+  ],
+
+  providers: [
+    {
+      provide: APP_GUARD,
+      useExisting: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

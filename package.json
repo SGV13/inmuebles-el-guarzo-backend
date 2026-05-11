@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:test": "tsc --noEmit -p test/tsconfig.json",
-    "typecheck:all": "pnpm typecheck && pnpm typecheck:test"
+    "typecheck:all": "pnpm typecheck && pnpm typecheck:test",
+    "seed:admin": "tsx --env-file=.env scripts/seed-first-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -29,12 +30,14 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.2",
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.105.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "helmet": "^8.1.0",
-    "jose": "^6.2.3",
+    "jose": "^4.15.9",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -46,6 +49,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
+    "@types/ws": "^8.18.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -59,6 +63,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.20.0"
   },
