@@ -1,0 +1,3 @@
+setup:
+  - project: inmuebles-el-guarzo
+    config: dev
