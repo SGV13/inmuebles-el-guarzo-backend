@@ -13,11 +13,11 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { AuthenticatedUser } from '../../../application/ports/output/identity-provider.port';
 import {
   GET_CURRENT_USER_INPUT_PORT,
   GetCurrentUserInputPort,
-} from '../../../application/features/get-current-user/dtos/get-current-user.input-port';
-import { AuthenticatedUser } from '../../../application/ports/output/identity-provider.port';
+} from '../../../application/use-cases/get-current-user/dtos/get-current-user.input-port';
 
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { MeHttpResponse, MePresenter } from '../presenters/me.presenter';

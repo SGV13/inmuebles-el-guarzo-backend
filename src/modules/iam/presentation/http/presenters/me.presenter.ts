@@ -11,7 +11,7 @@
  * → CAPA: Interface Adapters (Uncle Bob)
  */
 
-import { GetCurrentUserOutput } from '../../../application/features/get-current-user/dtos/get-current-user-output.dto';
+import { GetCurrentUserOutput } from '../../../application/use-cases/get-current-user/dtos/get-current-user-output.dto';
 
 export interface MeHttpResponse {
   id: string;
