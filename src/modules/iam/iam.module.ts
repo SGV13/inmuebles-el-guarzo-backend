@@ -15,10 +15,10 @@
 
 import { Module } from '@nestjs/common';
 
-import { GET_CURRENT_USER_INPUT_PORT } from './application/features/get-current-user/dtos/get-current-user.input-port';
-import { GetCurrentUserInteractor } from './application/features/get-current-user/get-current-user.interactor';
 import { IDENTITY_PROVIDER } from './application/ports/output/identity-provider.port';
 import { USER_PROFILE_REPOSITORY } from './application/ports/output/user-profile.repository.port';
+import { GET_CURRENT_USER_INPUT_PORT } from './application/use-cases/get-current-user/dtos/get-current-user.input-port';
+import { GetCurrentUserInteractor } from './application/use-cases/get-current-user/get-current-user.interactor';
 import { SupabaseAuthAdapter } from './infrastructure/identity-provider/supabase/supabase-auth.adapter';
 import { UserProfilePrismaRepositoryAdapter } from './infrastructure/persistence/prisma/user-profile.prisma.repository.adapter';
 import { MeController } from './presentation/http/controllers/me.controller';
