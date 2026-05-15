@@ -22,7 +22,7 @@
     "typecheck:test": "tsc --noEmit -p test/tsconfig.json",
     "typecheck:all": "pnpm typecheck && pnpm typecheck:test",
     "seed:admin": "doppler run -- tsx scripts/seed-first-admin.ts",
-    "prepare": "husky"
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { require('child_process').execSync('husky', {stdio: 'inherit'}) }\""
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
