@@ -1,0 +1,841 @@
+// Schema de Prisma para Inmuebles El Guarzo.
+//
+// Este archivo es la fuente unica de verdad de la estructura de la BD.
+// Cuando se modifica, hay que correr:
+//   pnpm prisma generate    -> regenera tipos de TS en @prisma/client
+//   pnpm prisma migrate dev -> crea una migracion SQL versionada
+//
+// Por ahora esta vacio (solo generator y datasource). Las tablas de los
+// 8 bounded contexts se agregan en un paso posterior del Hito 1.
+
+generator client {
+  provider      = "prisma-client-js"
+  // Binary targets: generamos para Windows (desarrollo local) y Linux
+  // (Render usa Debian-based, openssl 3.0.x). Sin esto, los despliegues
+  // a Render fallan porque el engine no es compatible.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// IAM — Identity and Access Management
+// =============================================================================
+//
+// El bounded context de IAM solo gestiona PERFILES de usuario. La identidad
+// (autenticación, contraseñas, sesiones) la maneja Supabase Auth como
+// Identity Provider externo. El `id` de cada user_profile coincide con el
+// UUID que Supabase Auth asigna al crear el usuario.
+//
+// Decisión: NO almacenamos hashed_password ni datos de recuperación.
+// Eso es responsabilidad del IdP federado.
+
+enum UserRole {
+  ADMIN
+  ADVISOR
+}
+
+model UserProfile {
+  // El ID viene de Supabase Auth. NO usar @default(uuid()).
+  // Se asigna explícitamente desde el use case que crea el usuario.
+  id String @id @db.Uuid
+
+  fullName String  @map("full_name") @db.VarChar(150)
+  email    String  @unique @db.VarChar(180)
+  phone    String? @db.VarChar(50)
+
+  role     UserRole
+  isActive Boolean  @default(true) @map("is_active")
+
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  propertyAssignments          PropertyAdvisorAssignment[]
+  offerStateTransitions        OfferStateTransition[]
+  assignedContactMessages      ContactMessage[]
+  contactMessageNotes          ContactMessageNote[]
+  publicationRequestsAsAdvisor PublicationRequest[]        @relation("PublicationRequestAdvisor")
+  publicationRequestsAsAdmin   PublicationRequest[]        @relation("PublicationRequestAdmin")
+  auditLogs                    AuditLog[]
+
+  @@index([role, isActive])
+  @@map("user_profiles")
+}
+
+// =============================================================================
+// CONFIGURATION — Catálogos del sistema
+// =============================================================================
+//
+// Tablas maestras que normalizan datos referenciales del sistema.
+// Las gestiona el administrador desde el panel (HU-28). Soft delete via
+// is_active: una opción desactivada no aparece para crear nuevos registros
+// pero los registros previos que la usaban siguen siendo válidos.
+
+model PropertyType {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  subtypes            PropertySubtype[]
+  properties          Property[]
+  publicationRequests PublicationRequest[]
+
+  @@index([isActive])
+  @@map("property_types")
+}
+
+model PropertySubtype {
+  id             String  @id @default(uuid()) @db.Uuid
+  propertyTypeId String  @map("property_type_id") @db.Uuid
+  code           String  @db.VarChar(40)
+  name           String  @db.VarChar(80)
+  description    String?
+  displayOrder   Int?    @map("display_order")
+  isActive       Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  propertyType PropertyType @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict)
+  properties   Property[]
+
+  @@unique([propertyTypeId, code])
+  @@index([propertyTypeId, isActive])
+  @@map("property_subtypes")
+}
+
+model PropertyUse {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  properties Property[]
+
+  @@index([isActive])
+  @@map("property_uses")
+}
+
+model PropertyCondition {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  properties Property[]
+
+  @@index([isActive])
+  @@map("property_conditions")
+}
+
+model ZoneType {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  properties Property[]
+
+  @@index([isActive])
+  @@map("zone_types")
+}
+
+model Feature {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  properties PropertyFeature[]
+
+  @@index([isActive])
+  @@map("features")
+}
+
+model Amenity {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(40)
+  name         String  @db.VarChar(80)
+  description  String?
+  displayOrder Int?    @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  properties PropertyAmenity[]
+
+  @@index([isActive])
+  @@map("amenities")
+}
+
+// =============================================================================
+// PROPERTIES — Inmuebles y sus atributos físicos
+// =============================================================================
+//
+// Este bounded context modela el inmueble en sí: ubicación, características
+// físicas, imágenes, asignación a asesor. NO incluye precio ni condiciones
+// de venta/arriendo (eso vive en el bounded context Offers).
+//
+// Decisión central: una propiedad es independiente de sus ofertas. Una
+// misma propiedad puede tener simultáneamente una oferta de venta y una
+// de arriendo, o pasar por múltiples ofertas a lo largo del tiempo.
+
+model Property {
+  id           String @id @default(uuid()) @db.Uuid
+  internalCode String @unique @map("internal_code") @db.VarChar(20)
+
+  // Catálogos referenciales (configuration)
+  propertyTypeId      String @map("property_type_id") @db.Uuid
+  propertySubtypeId   String @map("property_subtype_id") @db.Uuid
+  propertyUseId       String @map("property_use_id") @db.Uuid
+  zoneTypeId          String @map("zone_type_id") @db.Uuid
+  propertyConditionId String @map("property_condition_id") @db.Uuid
+  ownerId             String @map("owner_id") @db.Uuid
+
+  // Identificación y descripción
+  title              String    @db.VarChar(120)
+  description        String
+  internalNotes      String?   @map("internal_notes")
+  registrationNumber String?   @map("registration_number") @db.VarChar(60)
+  deedsDate          DateTime? @map("deeds_date") @db.Date
+
+  // Ubicación
+  country        String  @default("Colombia") @db.VarChar(80)
+  department     String  @db.VarChar(80)
+  city           String  @db.VarChar(80)
+  neighborhood   String? @db.VarChar(120)
+  sector         String? @db.VarChar(120)
+  addressPrivate String  @map("address_private") @db.VarChar(200)
+  latitude       Decimal @db.Decimal(10, 7)
+  longitude      Decimal @db.Decimal(10, 7)
+
+  // Áreas (m²)
+  landAreaM2      Decimal? @map("land_area_m2") @db.Decimal(10, 2)
+  builtAreaM2     Decimal? @map("built_area_m2") @db.Decimal(10, 2)
+  privateAreaM2   Decimal? @map("private_area_m2") @db.Decimal(10, 2)
+  availableAreaM2 Decimal? @map("available_area_m2") @db.Decimal(10, 2)
+
+  // Atributos numéricos
+  rooms         Int?
+  bathrooms     Int?
+  parkingSpaces Int? @map("parking_spaces")
+  floors        Int?
+  floorNumber   Int? @map("floor_number")
+  yearBuilt     Int? @map("year_built")
+  stratum       Int?
+
+  furnished         Boolean? @default(false)
+  freeOfLiens       Boolean? @default(true) @map("free_of_liens")
+  propertyTaxAnnual Decimal? @map("property_tax_annual") @db.Decimal(15, 2)
+  // Estado
+  isActive          Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relaciones (los related models se definen abajo o en otros bloques)
+  propertyType      PropertyType      @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict)
+  propertySubtype   PropertySubtype   @relation(fields: [propertySubtypeId], references: [id], onDelete: Restrict)
+  propertyUse       PropertyUse       @relation(fields: [propertyUseId], references: [id], onDelete: Restrict)
+  zoneType          ZoneType          @relation(fields: [zoneTypeId], references: [id], onDelete: Restrict)
+  propertyCondition PropertyCondition @relation(fields: [propertyConditionId], references: [id], onDelete: Restrict)
+  owner             PropertyOwner     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  images          PropertyImage[]
+  features        PropertyFeature[]
+  amenities       PropertyAmenity[]
+  valuations      PropertyValuation[]
+  assignments     PropertyAdvisorAssignment[]
+  offers          PropertyOffer[]
+  contactMessages ContactMessage[]
+
+  @@index([city, isActive])
+  @@index([propertyTypeId, isActive])
+  @@index([isActive])
+  @@index([ownerId])
+  @@map("properties")
+}
+
+enum OwnerType {
+  NATURAL_PERSON
+  LEGAL_ENTITY
+}
+
+model PropertyOwner {
+  id String @id @default(uuid()) @db.Uuid
+
+  ownerType OwnerType @map("owner_type")
+
+  // Datos comunes (siempre presentes)
+  fullName       String  @map("full_name") @db.VarChar(200)
+  email          String  @db.VarChar(180)
+  phonePrimary   String  @map("phone_primary") @db.VarChar(50)
+  phoneSecondary String? @map("phone_secondary") @db.VarChar(50)
+
+  // Datos de persona natural (NULL si es jurídica)
+  documentType   String? @map("document_type") @db.VarChar(20)
+  documentNumber String? @map("document_number") @db.VarChar(40)
+
+  // Datos de persona jurídica (NULL si es natural)
+  legalName    String? @map("legal_name") @db.VarChar(200)
+  taxId        String? @map("tax_id") @db.VarChar(40)
+  legalRepName String? @map("legal_rep_name") @db.VarChar(200)
+
+  // Origen del registro
+  publicationRequestId String? @unique @map("publication_request_id") @db.Uuid
+
+  // Notas internas
+  internalNotes String? @map("internal_notes")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  properties Property[]
+
+  @@unique([documentType, documentNumber])
+  @@unique([taxId])
+  @@index([email])
+  @@index([isActive])
+  @@map("property_owners")
+}
+
+model PropertyImage {
+  id         String  @id @default(uuid()) @db.Uuid
+  propertyId String  @map("property_id") @db.Uuid
+  imageUrl   String  @map("image_url") @db.VarChar(500)
+  publicId   String  @map("public_id") @db.VarChar(200)
+  position   Int
+  isPrimary  Boolean @default(false) @map("is_primary")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, position])
+  @@map("property_images")
+}
+
+model PropertyFeature {
+  id         String @id @default(uuid()) @db.Uuid
+  propertyId String @map("property_id") @db.Uuid
+  featureId  String @map("feature_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  feature  Feature  @relation(fields: [featureId], references: [id], onDelete: Restrict)
+
+  @@unique([propertyId, featureId])
+  @@map("property_features")
+}
+
+model PropertyAmenity {
+  id         String @id @default(uuid()) @db.Uuid
+  propertyId String @map("property_id") @db.Uuid
+  amenityId  String @map("amenity_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Restrict)
+
+  @@unique([propertyId, amenityId])
+  @@map("property_amenities")
+}
+
+model PropertyValuation {
+  id                      String   @id @default(uuid()) @db.Uuid
+  propertyId              String   @map("property_id") @db.Uuid
+  landValuationM2         Decimal? @map("land_valuation_m2") @db.Decimal(15, 2)
+  constructionValuationM2 Decimal? @map("construction_valuation_m2") @db.Decimal(15, 2)
+  cadastralValuation      Decimal  @map("cadastral_valuation") @db.Decimal(15, 2)
+  valuationDate           DateTime @map("valuation_date") @db.Date
+  valuationNotes          String?  @map("valuation_notes")
+  valuationStatus         String   @default("ACTIVE") @map("valuation_status") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, valuationDate])
+  @@map("property_valuations")
+}
+
+model PropertyAdvisorAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  propertyId   String    @map("property_id") @db.Uuid
+  advisorId    String    @map("advisor_id") @db.Uuid
+  assignedAt   DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  unassignedAt DateTime? @map("unassigned_at") @db.Timestamptz(6)
+  reason       String?
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
+  advisor UserProfile @relation(fields: [advisorId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId, unassignedAt])
+  @@index([advisorId, unassignedAt])
+  @@map("property_advisor_assignments")
+}
+
+// =============================================================================
+// OFFERS — Ofertas de venta y arriendo, con máquina de estados auditable
+// =============================================================================
+//
+// Una oferta es la propuesta comercial sobre una propiedad: precio,
+// condiciones, estado de publicación. Una propiedad puede tener varias
+// ofertas a lo largo del tiempo y simultáneamente (una de venta + una
+// de arriendo). La regla "máximo una oferta activa por tipo" la enforza
+// el aggregate Offer en código.
+//
+// Cada cambio de estado se registra en offer_state_transitions. La tabla
+// es append-only conceptualmente (en Hito 1 lo manejamos por convención;
+// si hace falta endurecimiento por triggers SQL lo agregamos después).
+
+enum OfferType {
+  SALE
+  RENT
+}
+
+enum OfferState {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FINALIZATION_REQUESTED
+  FINALIZED
+  CANCELLED
+}
+
+enum RentFrequency {
+  MONTHLY
+}
+
+model PropertyOffer {
+  id         String @id @default(uuid()) @db.Uuid
+  propertyId String @map("property_id") @db.Uuid
+
+  offerType OfferType  @map("offer_type")
+  state     OfferState @default(DRAFT)
+
+  // Datos de venta (NULL si offerType = RENT)
+  salePrice      Decimal? @map("sale_price") @db.Decimal(15, 2)
+  saleNegotiable Boolean? @map("sale_negotiable")
+
+  // Datos de arriendo (NULL si offerType = SALE)
+  rentPrice              Decimal?       @map("rent_price") @db.Decimal(15, 2)
+  rentFrequency          RentFrequency? @map("rent_frequency")
+  includesAdministration Boolean?       @map("includes_administration")
+  administrationFee      Decimal?       @map("administration_fee") @db.Decimal(15, 2)
+  minimumTermMonths      Int?           @map("minimum_term_months")
+  depositRequired        Boolean?       @map("deposit_required")
+
+  // Publicación y cierre
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz(6)
+  closureReason String?   @map("closure_reason")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  property    Property               @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  transitions OfferStateTransition[]
+
+  @@index([propertyId, state])
+  @@index([state, publishedAt])
+  @@index([offerType, state])
+  @@map("property_offers")
+}
+
+model OfferStateTransition {
+  id          String     @id @default(uuid()) @db.Uuid
+  offerId     String     @map("offer_id") @db.Uuid
+  fromState   OfferState @map("from_state")
+  toState     OfferState @map("to_state")
+  performedBy String     @map("performed_by") @db.Uuid
+  motive      String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  offer           PropertyOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  performedByUser UserProfile   @relation(fields: [performedBy], references: [id], onDelete: Restrict)
+
+  @@index([offerId, createdAt])
+  @@index([performedBy])
+  @@map("offer_state_transitions")
+}
+
+// =============================================================================
+// CONTACTS — Mensajes de contacto del catálogo público y notas internas
+// =============================================================================
+//
+// Mensajes que llegan desde el formulario público del catálogo. La gestión
+// interna se hace asignando a un asesor y agregando notas. Las notas son
+// inmutables (RF-51): triggers SQL en la migración rechazan UPDATE/DELETE.
+
+enum ContactMessageStatus {
+  RECEIVED
+  ASSIGNED
+  ATTENDED
+  DISCARDED
+}
+
+enum ContactReceivedChannel {
+  CATALOG_PUBLIC
+  WHATSAPP_INTAKE
+  PHONE_INTAKE
+}
+
+model ContactMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Datos del remitente
+  name  String @db.VarChar(150)
+  email String @db.VarChar(180)
+  phone String @db.VarChar(50)
+
+  // Contenido
+  message String @db.VarChar(2000)
+
+  // Referencia opcional a una propiedad
+  propertyId String? @map("property_id") @db.Uuid
+
+  // Estado y asignación
+  status            ContactMessageStatus   @default(RECEIVED)
+  receivedChannel   ContactReceivedChannel @default(CATALOG_PUBLIC) @map("received_channel")
+  assignedAdvisorId String?                @map("assigned_advisor_id") @db.Uuid
+  attendedAt        DateTime?              @map("attended_at") @db.Timestamptz(6)
+
+  // Deduplicación
+  dedupHash String @unique @map("dedup_hash") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  property        Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  assignedAdvisor UserProfile?         @relation(fields: [assignedAdvisorId], references: [id], onDelete: SetNull)
+  notes           ContactMessageNote[]
+
+  @@index([status, createdAt])
+  @@index([assignedAdvisorId, status])
+  @@index([propertyId])
+  @@map("contact_messages")
+}
+
+model ContactMessageNote {
+  id        String @id @default(uuid()) @db.Uuid
+  messageId String @map("message_id") @db.Uuid
+  authorId  String @map("author_id") @db.Uuid
+  content   String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  message ContactMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+  author  UserProfile    @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([messageId, createdAt])
+  @@index([authorId])
+  @@map("contact_message_notes")
+}
+
+// =============================================================================
+// PUBLICATIONS — Solicitudes de captación + autorizaciones de datos personales
+// =============================================================================
+//
+// Solicitudes que llegan desde el formulario público de captación de
+// propietarios (HU-22). El admin las revisa, asigna asesor opcionalmente,
+// aprueba o rechaza. Si aprueba, se crea property_owner y property.
+//
+// Las autorizaciones de datos personales (Ley 1581) viven en una tabla
+// genérica que apunta polimorficamente al sujeto de los datos (request,
+// owner, etc.). Es append-only: revocaciones se registran como filas
+// nuevas, no como UPDATE.
+
+enum PublicationRequestStatus {
+  PENDING_REVIEW
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PublicationRequestOfferType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum PersonalDataSubjectType {
+  PUBLICATION_REQUEST
+  PROPERTY_OWNER
+}
+
+model PublicationRequest {
+  id              String @id @default(uuid()) @db.Uuid
+  referenceNumber String @unique @map("reference_number") @db.VarChar(20)
+
+  // Datos del propietario solicitante
+  ownerFullName       String  @map("owner_full_name") @db.VarChar(200)
+  ownerEmail          String  @map("owner_email") @db.VarChar(180)
+  ownerPhonePrimary   String  @map("owner_phone_primary") @db.VarChar(50)
+  ownerPhoneSecondary String? @map("owner_phone_secondary") @db.VarChar(50)
+  ownerDocumentType   String? @map("owner_document_type") @db.VarChar(20)
+  ownerDocumentNumber String? @map("owner_document_number") @db.VarChar(40)
+
+  // Datos propuestos del inmueble (sin validar)
+  proposedPropertyTypeId String?                     @map("proposed_property_type_id") @db.Uuid
+  proposedOfferType      PublicationRequestOfferType @map("proposed_offer_type")
+  proposedLocation       String                      @map("proposed_location") @db.VarChar(300)
+  proposedAreaM2         Decimal?                    @map("proposed_area_m2") @db.Decimal(10, 2)
+  proposedDescription    String                      @map("proposed_description")
+  proposedExpectedPrice  Decimal?                    @map("proposed_expected_price") @db.Decimal(15, 2)
+
+  // Estado y workflow
+  status            PublicationRequestStatus @default(PENDING_REVIEW)
+  assignedAdvisorId String?                  @map("assigned_advisor_id") @db.Uuid
+
+  // Datos de la decisión (NULL hasta que se decida)
+  decisionAt        DateTime? @map("decision_at") @db.Timestamptz(6)
+  decisionByAdminId String?   @map("decision_by_admin_id") @db.Uuid
+  decisionMotive    String?   @map("decision_motive")
+
+  // Trazabilidad de seguridad
+  captchaToken           String  @map("captcha_token") @db.VarChar(2048)
+  submittedFromIp        String? @map("submitted_from_ip") @db.VarChar(45)
+  submittedFromUserAgent String? @map("submitted_from_user_agent") @db.VarChar(500)
+
+  // Deduplicación
+  dedupHash String @unique @map("dedup_hash") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  proposedPropertyType PropertyType? @relation(fields: [proposedPropertyTypeId], references: [id], onDelete: Restrict)
+  assignedAdvisor      UserProfile?  @relation("PublicationRequestAdvisor", fields: [assignedAdvisorId], references: [id], onDelete: SetNull)
+  decisionByAdmin      UserProfile?  @relation("PublicationRequestAdmin", fields: [decisionByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([assignedAdvisorId, status])
+  @@index([ownerEmail])
+  @@map("publication_requests")
+}
+
+model PersonalDataAuthorization {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Referencia polimórfica al sujeto de los datos
+  subjectType PersonalDataSubjectType @map("subject_type")
+  subjectId   String                  @map("subject_id") @db.Uuid
+
+  // Identificación del titular en el momento de la autorización
+  titularFullName       String @map("titular_full_name") @db.VarChar(200)
+  titularDocumentType   String @map("titular_document_type") @db.VarChar(20)
+  titularDocumentNumber String @map("titular_document_number") @db.VarChar(40)
+
+  // Tratamientos autorizados (texto libre estructurado por el frontend)
+  authorizedPurposes String @map("authorized_purposes")
+
+  // Versión del aviso de privacidad mostrado
+  privacyNoticeVersion String @map("privacy_notice_version") @db.VarChar(20)
+
+  // Evidencia técnica del consentimiento
+  consentIp        String?  @map("consent_ip") @db.VarChar(45)
+  consentUserAgent String?  @map("consent_user_agent") @db.VarChar(500)
+  consentedAt      DateTime @default(now()) @map("consented_at") @db.Timestamptz(6)
+
+  // Revocación (NULL si está vigente)
+  isRevoked        Boolean   @default(false) @map("is_revoked")
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revocationReason String?   @map("revocation_reason")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([subjectType, subjectId])
+  @@index([titularDocumentType, titularDocumentNumber])
+  @@map("personal_data_authorizations")
+}
+
+// =============================================================================
+// NOTIFICATIONS — Outbox (entrega confiable) + Log (histórico de envíos)
+// =============================================================================
+//
+// Las acciones de negocio insertan filas en notification_outbox dentro de
+// la misma transacción que la acción. Un job programado las procesa
+// despues, las despacha via Resend/Novu, y registra el resultado en
+// notification_log.
+//
+// Esto garantiza entrega confiable sin bloquear las transacciones en
+// llamadas HTTP externas.
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NotificationOutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model NotificationOutbox {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Identificación de la notificación a enviar
+  templateCode String              @map("template_code") @db.VarChar(80)
+  channel      NotificationChannel
+  recipient    String              @db.VarChar(300)
+
+  // Payload con las variables a inyectar en la plantilla (Novu)
+  payload Json
+
+  // Procesamiento
+  status           NotificationOutboxStatus @default(PENDING)
+  attemptCount     Int                      @default(0) @map("attempt_count")
+  lastAttemptAt    DateTime?                @map("last_attempt_at") @db.Timestamptz(6)
+  lastErrorMessage String?                  @map("last_error_message")
+
+  // Cuando se procesa, se vincula al log resultante
+  notificationLogId String? @unique @map("notification_log_id") @db.Uuid
+
+  // Programación opcional (para enviar en futuro)
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  notificationLog NotificationLog? @relation(fields: [notificationLogId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledFor])
+  @@index([status, createdAt])
+  @@map("notification_outbox")
+}
+
+model NotificationLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Identificación
+  templateCode String              @map("template_code") @db.VarChar(80)
+  channel      NotificationChannel
+  recipient    String              @db.VarChar(300)
+
+  // Resultado del envío
+  status            NotificationStatus
+  providerMessageId String?            @map("provider_message_id") @db.VarChar(200)
+  errorMessage      String?            @map("error_message")
+  metadata          Json?
+
+  // Timestamps de ciclo de vida
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz(6)
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  outbox NotificationOutbox?
+
+  @@index([status, createdAt])
+  @@index([recipient, createdAt])
+  @@index([templateCode, createdAt])
+  @@map("notification_log")
+}
+
+// =============================================================================
+// AUDIT — Registro append-only de eventos auditables del sistema
+// =============================================================================
+//
+// Cada accion relevante del sistema (creacion, aprobacion, rechazo, cambio
+// de estado, etc.) inserta una fila aqui. La tabla es append-only via
+// trigger SQL: cualquier UPDATE o DELETE es rechazado por Postgres.
+//
+// La referencia al sujeto es polimorfica (subject_type + subject_id) sin
+// FK fisica, igual que personal_data_authorizations. La integridad la
+// garantiza el codigo que solo escribe filas en transacciones donde el
+// sujeto existe.
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  ANONYMOUS
+}
+
+enum AuditSubjectType {
+  PUBLICATION_REQUEST
+  PROPERTY
+  PROPERTY_OFFER
+  PROPERTY_OWNER
+  USER_PROFILE
+  CONTACT_MESSAGE
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Sujeto auditado (referencia polimorfica)
+  subjectType AuditSubjectType @map("subject_type")
+  subjectId   String           @map("subject_id") @db.Uuid
+
+  // Accion realizada (formato BC.ACTION_NAME, ej: OFFER.STATE_CHANGED)
+  action String @db.VarChar(80)
+
+  // Actor (quien realizo la accion)
+  actorType AuditActorType @map("actor_type")
+  actorId   String?        @map("actor_id") @db.Uuid
+
+  // Contexto de la accion
+  description String?
+  metadata    Json?
+
+  // Trazabilidad de la peticion HTTP que originó la acción
+  requestIp        String? @map("request_ip") @db.VarChar(45)
+  requestUserAgent String? @map("request_user_agent") @db.VarChar(500)
+  correlationId    String? @map("correlation_id") @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor UserProfile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_log")
+}

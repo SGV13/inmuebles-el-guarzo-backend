@@ -8,25 +8,43 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start": "doppler run -- nest start",
+    "start:dev": "doppler run -- nest start --watch",
+    "start:debug": "doppler run -- nest start --debug --watch",
+    "start:prod": "doppler run -- node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:test": "tsc --noEmit -p test/tsconfig.json",
+    "typecheck:all": "pnpm typecheck && pnpm typecheck:test",
+    "seed:admin": "doppler run -- tsx scripts/seed-first-admin.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.4.2",
+    "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.105.4",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "helmet": "^8.1.0",
+    "jose": "^4.15.9",
+    "nestjs-pino": "^4.6.1",
+    "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
@@ -36,19 +54,24 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
+    "@types/ws": "^8.18.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
+    "pino-pretty": "^13.1.3",
     "prettier": "^3.4.2",
+    "prisma": "^5.22.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "tsx": "^4.21.0",
+    "typescript": "5.9.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
@@ -61,6 +84,17 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@shared/(.*)$": "<rootDir>/shared-kernel/$1",
+      "^@iam/(.*)$": "<rootDir>/modules/iam/$1",
+      "^@properties/(.*)$": "<rootDir>/modules/properties/$1",
+      "^@offers/(.*)$": "<rootDir>/modules/offers/$1",
+      "^@contacts/(.*)$": "<rootDir>/modules/contacts/$1",
+      "^@publications/(.*)$": "<rootDir>/modules/publications/$1",
+      "^@notifications/(.*)$": "<rootDir>/modules/notifications/$1",
+      "^@audit/(.*)$": "<rootDir>/modules/audit/$1",
+      "^@configuration/(.*)$": "<rootDir>/modules/configuration/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

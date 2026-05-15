@@ -1,9 +1,60 @@
+/**
+ * main.ts — Entry point de la aplicación NestJS.
+ *
+ * Configura el bootstrap completo: filtros globales, validación, seguridad,
+ * documentación OpenAPI y CORS.
+ */
+
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import { Logger } from 'nestjs-pino';
+
 import { AppModule } from './app.module';
+import { DomainExceptionFilter } from './shared-kernel/presentation/filters/domain-exception.filter';
+import { PrismaExceptionFilter } from './shared-kernel/presentation/filters/prisma-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Reemplaza el logger de NestJS por Pino.
+  app.useLogger(app.get(Logger));
+
+  app.setGlobalPrefix('api/v1');
+  app.use(helmet());
+
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  app.useGlobalFilters(new DomainExceptionFilter(), new PrismaExceptionFilter());
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Inmuebles El Guarzo API')
+    .setDescription('API del backend de Inmuebles El Guarzo v2.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = Number(process.env.PORT) || 3000;
+  await app.listen(port);
 }
 
 void bootstrap();

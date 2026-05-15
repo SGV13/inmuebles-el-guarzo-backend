@@ -5,5 +5,16 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@shared/(.*)$": "<rootDir>/src/shared-kernel/$1",
+    "^@iam/(.*)$": "<rootDir>/src/modules/iam/$1",
+    "^@properties/(.*)$": "<rootDir>/src/modules/properties/$1",
+    "^@offers/(.*)$": "<rootDir>/src/modules/offers/$1",
+    "^@contacts/(.*)$": "<rootDir>/src/modules/contacts/$1",
+    "^@publications/(.*)$": "<rootDir>/src/modules/publications/$1",
+    "^@notifications/(.*)$": "<rootDir>/src/modules/notifications/$1",
+    "^@audit/(.*)$": "<rootDir>/src/modules/audit/$1",
+    "^@configuration/(.*)$": "<rootDir>/src/modules/configuration/$1"
   }
 }
