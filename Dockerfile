@@ -29,11 +29,7 @@ ENV NODE_ENV=production
 
 RUN pnpm install --frozen-lockfile --prod
 
-
-# Copiar node_modules completo del builder que ya tiene Prisma generado
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
+RUN pnpm prisma generate
 
 COPY --from=builder /app/dist ./dist
 
