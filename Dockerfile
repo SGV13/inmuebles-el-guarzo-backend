@@ -20,6 +20,10 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
+# OpenSSL requerido por el query engine de Prisma en Alpine
+RUN apk add --no-cache openssl
+
+
 RUN npm install -g pnpm
 
 COPY package.json pnpm-lock.yaml ./
