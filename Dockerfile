@@ -29,7 +29,11 @@ ENV NODE_ENV=production
 
 RUN pnpm install --frozen-lockfile --prod
 
-RUN pnpm prisma generate
+
+# Copiar el cliente Prisma ya generado desde el builder
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
 
 COPY --from=builder /app/dist ./dist
 
