@@ -19,6 +19,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import * as Sentry from '@sentry/nestjs';
 import { DomainErrorType, DomainException } from '../../domain/exceptions/domain.exception';
 
 import { DomainExceptionFilter } from './domain-exception.filter';
@@ -51,6 +52,7 @@ export class PrismaExceptionFilter implements ExceptionFilter<Prisma.PrismaClien
 
     if (translated === null) {
       this.logger.error(`Unhandled Prisma error code [${exception.code}]: ${exception.message}`);
+      Sentry.captureException(exception);
       throw exception;
     }
 

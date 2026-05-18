@@ -16,7 +16,7 @@
  * → CAPA: Frameworks & Drivers (Uncle Bob).
  */
 
-import { IsIn, IsNotEmpty, IsString, IsUrl } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class EnvSchema {
   // Entorno de ejecucion. NestJS y muchas librerias cambian
@@ -58,4 +58,16 @@ export class EnvSchema {
   // que cachea las claves y maneja rotacion automaticamente.
   @IsUrl({ require_protocol: true, protocols: ['https'] })
   SUPABASE_JWKS_URL!: string;
+
+  // Sentry DSN para captura de errores en producción.
+  // Opcional: si no está presente, Sentry se deshabilita automáticamente.
+  @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['https'] })
+  SENTRY_DSN?: string;
+
+  // Token de BetterStack para envío de logs estructurados.
+  // Opcional: si no está presente, los logs solo van a stdout.
+  @IsOptional()
+  @IsString()
+  BETTERSTACK_SOURCE_TOKEN?: string;
 }

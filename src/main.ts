@@ -5,6 +5,10 @@
  * documentación OpenAPI y CORS.
  */
 
+// CRÍTICO: instrument.ts debe importarse primero para que Sentry
+// instrumente el runtime antes de que NestJS registre sus handlers.
+import './instrument';
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -20,9 +24,7 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
 
-  // Reemplaza el logger de NestJS por Pino.
   app.useLogger(app.get(Logger));
-
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
 
