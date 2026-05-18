@@ -1,17 +1,7 @@
-/**
- * AppModule — Modulo raiz de la aplicacion.
- *
- * Compone los modulos del sistema. ConfigModule va PRIMERO porque
- * valida las variables de entorno al bootstrap; si falla, la app
- * no arranca y los modulos siguientes ni siquiera se inicializan.
- *
- * LoggerModule va SEGUNDO para que Pino esté disponible antes de
- * que cualquier módulo de negocio empiece a loggear.
- */
-
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { LoggerModule } from 'nestjs-pino';
 
 import { IamModule } from './modules/iam/iam.module';
@@ -27,11 +17,16 @@ import { SharedKernelModule } from './shared-kernel/shared-kernel.module';
       cache: true,
       validate: validateEnv,
     }),
+    SentryModule.forRoot(),
     LoggerModule.forRoot(pinoLoggerConfig),
     SharedKernelModule,
     IamModule,
   ],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_GUARD,
       useExisting: JwtAuthGuard,
